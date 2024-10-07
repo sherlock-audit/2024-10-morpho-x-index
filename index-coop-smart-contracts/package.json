@@ -1,0 +1,143 @@
+{
+  "name": "@indexcoop/index-coop-smart-contracts",
+  "version": "0.0.30",
+  "description": "IndexCoop smart contracts",
+  "main": "dist",
+  "types": "dist/types",
+  "files": [
+    "artifacts",
+    "dist",
+    "contracts",
+    "external",
+    "utils",
+    "scripts",
+    "typechain",
+    "tsconfig.json"
+  ],
+  "scripts": {
+    "build": "yarn compile && yarn build:typechain",
+    "build:npm": "yarn compile:npm && yarn build:typechain",
+    "build:typechain": "yarn patch-hardhat-typechain && yarn typechain && yarn fix-typechain && yarn transpile-dist",
+    "chain": "npx hardhat node --no-deploy",
+    "chain:fork": "FORK=true yarn run chain",
+    "chain:fork:ethereum": "yarn run chain:fork",
+    "chain:fork:polygon": "NETWORK=polygon yarn run chain:fork",
+    "chain:fork:optimism": "NETWORK=optimism yarn run chain:fork",
+    "chain:fork:arbitrum": "NETWORK=arbitrum yarn run chain:fork",
+    "clean": "rm -rf coverage.json .coverage_cache .coverage_contracts cache coverage typechain artifacts dist",
+    "clean-dev-deployment": "rm -rf deployments/50-development.json",
+    "compile": "npx hardhat compile",
+    "compile:npm": "SKIP_ABI_GAS_MODS=true npx hardhat compile",
+    "coverage": "yarn clean && yarn build && yarn cov:command",
+    "cov:command": "COVERAGE=true node --max-old-space-size=4096 ./node_modules/.bin/hardhat coverage",
+    "fix-typechain": "node scripts/fix-typechain.js && yarn rename-extensions",
+    "flatten": "npx waffle flatten",
+    "lint": "yarn run lint-sol && yarn run lint-ts",
+    "lint-sol": "solhint 'contracts/**/*.sol'",
+    "lint-ts": "tslint -c tslint.json -p tsconfig.json --fix",
+    "patch-hardhat-typechain": "node scripts/patch-hardhat-typechain.js",
+    "precommit": "lint-staged",
+    "prepare": "yarn build",
+    "prepublishOnly": "yarn clean && yarn build:npm",
+    "rename-extensions": "for f in typechain/*.d.ts; do mv -- \"$f\" \"${f%.d.ts}.ts\"; done",
+    "semantic-release": "semantic-release --branches master",
+    "test": "npx hardhat test --network localhost",
+    "test:integration": "INTEGRATIONTEST=true VERBOSE=true yarn run test",
+    "test:fast": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat test --network localhost --no-compile",
+    "test:fast:compile": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat test --network localhost",
+    "test:integration:polygon": "find test/integration/polygon -type f -name '*.spec.ts'  | xargs yarn run test:integration",
+    "test:integration:optimism": "find test/integration/optimism -type f -name '*.spec.ts'  | xargs yarn run test:integration",
+    "test:integration:ethereum": "find test/integration/ethereum -type f -name '*.spec.ts'  | xargs yarn run test:integration",
+    "test:integration:arbitrum": "find test/integration/arbitrum -type f -name '*.spec.ts'  | xargs yarn run test:integration",
+    "test:clean": "yarn clean && yarn build && yarn test",
+    "transpile": "tsc",
+    "transpile-dist": "tsc -p tsconfig.dist.json",
+    "typechain": "npx hardhat typechain"
+  },
+  "resolutions": {
+    "ganache-cli": "6.12.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IndexCoop/index-coop-smart-contracts.git"
+  },
+  "author": "IndexCoop",
+  "license": "MIT",
+  "homepage": "https://github.com/IndexCoop",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/contracts": "^3.1.0",
+    "@typechain/ethers-v5": "^5.0.0",
+    "@types/chai": "^4.2.11",
+    "@types/fs-extra": "^5.0.0",
+    "@types/lodash": "^4.14.86",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^14.0.5",
+    "bs58": "^5.0.0",
+    "chai": "^4.2.0",
+    "coveralls": "^3.0.1",
+    "dotenv": "^8.2.0",
+    "ethereum-waffle": "^3.2.1",
+    "globby": "^11.0.2",
+    "hardhat": "2.22.3",
+    "hardhat-contract-sizer": "^2.5.1",
+    "hardhat-deploy": "^0.7.0-beta.39",
+    "hardhat-typechain": "^0.3.4",
+    "husky": "^4.2.5",
+    "lint-staged": "^10.2.11",
+    "lodash": "^4.17.4",
+    "prettier": "^3.2.5",
+    "prettier-plugin-solidity": "^1.3.1",
+    "semantic-release": "^19.0.2",
+    "solc": "^0.6.10",
+    "solhint": "^3.1.0",
+    "solidity-coverage": "^0.8.0",
+    "ts-generator": "^0.1.1",
+    "ts-node": "^8.10.1",
+    "tslint": "^6.1.3",
+    "tslint-eslint-rules": "^5.4.0",
+    "typescript": "5.4.2"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.3.1",
+    "@ethersproject/abstract-signer": "5.0.9",
+    "@ethersproject/bignumber": "5.0.12",
+    "@ethersproject/providers": "5.0.17",
+    "@types/ungap__structured-clone": "^0.3.0",
+    "@ungap/structured-clone": "^0.3.4",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "ethereumjs-util": "^7.0.5",
+    "ethers": "5.0.24",
+    "fs-extra": "^5.0.0",
+    "module-alias": "^2.2.2",
+    "replace-in-file": "^6.1.0",
+    "typechain": "^4.0.1"
+  },
+  "peerDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "ethereum-waffle": "^3.2.1",
+    "hardhat": "^2.2.1"
+  },
+  "_moduleAliases": {
+    "@utils": "utils",
+    "@typechain": "typechain"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "yarn precommit"
+    }
+  },
+  "lint-staged": {
+    "contracts/**/*.sol": [
+      "yarn lint-sol --fix"
+    ],
+    "test/**/*.ts": [
+      "yarn lint-ts --fix"
+    ],
+    "utils/**/*.ts": [
+      "yarn lint-ts --fix"
+    ]
+  }
+}
