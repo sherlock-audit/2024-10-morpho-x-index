@@ -8,3 +8,9 @@
 # Q&A
 
 # Audit scope
+
+
+[index-coop-smart-contracts @ 7202ed7d335c107d51efa5c081fcd68517c310d5](https://github.com/IndexCoop/index-coop-smart-contracts/tree/7202ed7d335c107d51efa5c081fcd68517c310d5)
+- [index-coop-smart-contracts/contracts/adapters/MorphoLeverageStrategyExtension.sol](index-coop-smart-contracts/contracts/adapters/MorphoLeverageStrategyExtension.sol)
+
+
