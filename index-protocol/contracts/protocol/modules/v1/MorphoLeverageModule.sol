@@ -281,6 +281,12 @@ contract MorphoLeverageModule is ModuleBase, ReentrancyGuard, Ownable, IModuleIs
         _repayBorrow(deleverInfo.setToken, setMarketParams, repayQuantity, 0);
 
         _updateRepayDefaultPosition(deleverInfo, IERC20(setMarketParams.loanToken));
+
+        uint256 collateralBalance = deleverInfo.collateralAsset.balanceOf(address(deleverInfo.setToken));
+        if(collateralBalance > 0) {
+            _deposit(_setToken, setMarketParams, collateralBalance);
+        }
+
         _sync(deleverInfo.setToken);
 
         emit LeverageDecreased(
@@ -341,7 +347,13 @@ contract MorphoLeverageModule is ModuleBase, ReentrancyGuard, Ownable, IModuleIs
         _repayBorrow(deleverInfo.setToken, setMarketParams, borrowBalance, borrowShares);
 
         _updateRepayDefaultPosition(deleverInfo, IERC20(setMarketParams.loanToken));
-        _sync(deleverInfo.setToken);
+
+        uint256 collateralBalance = deleverInfo.collateralAsset.balanceOf(address(deleverInfo.setToken));
+        if(collateralBalance > 0) {
+            _deposit(_setToken, setMarketParams, collateralBalance);
+        }
+
+       _sync(deleverInfo.setToken);
 
         emit LeverageDecreased(
             _setToken,
@@ -437,6 +449,30 @@ contract MorphoLeverageModule is ModuleBase, ReentrancyGuard, Ownable, IModuleIs
         _setToken.editDefaultPosition(setMarketParams.collateralToken, 0);
         sync(_setToken);
     }
+
+    /**
+     * @dev MANAGER ONLY: Withdraws full collateral position from the specified Morpho market
+     * @param _setToken             Instance of the SetToken for which to withdraw collateral tokens from Morpho
+     */
+    function exitCollateralPosition(
+        ISetToken _setToken
+    )
+        external
+        onlyManagerAndValidSet(_setToken)
+    {
+        MarketParams memory setMarketParams = marketParams[_setToken];
+        bytes32 marketId = setMarketParams.id();
+        Position memory position = morpho.position(marketId, address(_setToken));
+        require(position.borrowShares == 0, "Borrow balance must be 0");
+        _withdraw(_setToken, setMarketParams, position.collateral);
+
+        _sync(_setToken);
+
+        uint256 collateralNotionalBalance = IERC20(setMarketParams.collateralToken).balanceOf(address(_setToken));
+        uint256 newCollateralPosition = collateralNotionalBalance.preciseDiv(_setToken.totalSupply());
+        _setToken.editDefaultPosition(setMarketParams.collateralToken, newCollateralPosition);
+    }
+
 
     /**
      * @dev MANAGER ONLY: Removes this module from the SetToken, via call by the SetToken. Any deposited collateral assets
@@ -560,7 +596,7 @@ contract MorphoLeverageModule is ModuleBase, ReentrancyGuard, Ownable, IModuleIs
         if (_isEquity && setMarketParams.collateralToken == address(_component)) {
             int256 componentCollateral = _setToken.getExternalPositionRealUnit(address(_component), address(this));
 
-            require(componentCollateral > 0, "Component must be negative");
+            require(componentCollateral > 0, "Component must be positive");
 
             uint256 notionalCollateral = componentCollateral.toUint256().preciseMul(_setTokenQuantity);
             _deposit(_setToken, setMarketParams, notionalCollateral);

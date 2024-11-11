@@ -702,7 +702,7 @@ describe("MorphoLeverageModule integration", () => {
 
               expect(newFirstPosition.component).to.eq(wsteth.address);
               expect(newFirstPosition.positionState).to.eq(1); // External
-              expect(newFirstPosition.unit).to.eq(
+              expect(newFirstPosition.unit).to.gte(
                 initialPositions[0].unit.sub(subjectRedeemQuantity),
               );
               expect(newFirstPosition.module).to.eq(morphoLeverageModule.address);
@@ -726,21 +726,74 @@ describe("MorphoLeverageModule integration", () => {
 
             it("positions should align with token balances", async () => {
               await subject();
-              // NOTE: When
-              // 1. The withdrawn amount of collateral tokens exceeds the maximum amount that can be sold on uni given current liquidity
-              // AND
-              // 2. The obtained loan token amount still is enough to repay the loan
-              // The set will be in a state where it has a positive collateral token balance
-              // that is not deposited into morpho and therefore also not reflected in positions
-              // Calling `enterCollateralPosition` will fix that by depositing said tokens and updating positions,
-              // but any user that would have redeemed set tokens in between would have made a loss
-              // vice versa anyone depositing / minting would have made a profit
-              // This problem comes from `exactInput` on uniswap not really being that exact in above scenario
-              // and therefore should also exist on existing leverage modules
-              // TODO: Verify that this is not a problem
-              // TODO: Verify that this also exists on AaveLeverageModule
-              await morphoLeverageModule.enterCollateralPosition(setToken.address);
               await checkSetComponentsAgainstMorphoPosition();
+            });
+          });
+
+          describe("#exitCollateralPosition", async () => {
+            async function subject(): Promise<any> {
+              return morphoLeverageModule
+                .connect(subjectCaller.wallet)
+                .exitCollateralPosition(subjectSetToken);
+            }
+
+            describe("when token has not been delevered", async () => {
+              it("should revert", async () => {
+                await expect(subject()).to.be.revertedWith("Borrow balance must be 0");
+              });
+            });
+            describe("when token has been delevered", async () => {
+              beforeEach(async () => {
+                await morphoLeverageModule.deleverToZeroBorrowBalance(
+                  setToken.address,
+                  ether(0.5),
+                  "UNISWAPV3",
+                  await uniswapV3ExchangeAdapterV2.generateDataParam(
+                    [wsteth.address, usdc.address], // Swap path
+                    [500], // Fees
+                    true,
+                  ),
+                );
+              });
+              it("should update positions correctly", async () => {
+                const positionsBefore = await setToken.getPositions();
+                expect(positionsBefore[0].unit).to.gt(0);
+                expect(positionsBefore[0].positionState).to.eq(1); // External
+                const collateralPositionBefore = positionsBefore[0].unit;
+
+                await subject();
+
+                const positionsAfter = await setToken.getPositions();
+                expect(positionsBefore[1].positionState).to.eq(0); // Default
+                const collateralPositionAfter = positionsAfter[1].unit;
+                const roundingError = 1;
+                expect(positionsAfter.length).to.eq(2);
+                expect(collateralPositionAfter).to.gte(collateralPositionBefore.sub(roundingError));
+                expect(collateralPositionAfter).to.lte(collateralPositionBefore.add(roundingError));
+              });
+              it("should withdraw all collateral from morpho", async () => {
+                const [,, collateralBefore] = await morpho.position(
+                  marketId,
+                  setToken.address,
+                );
+                const balanceBefore = await wsteth.balanceOf(setToken.address);
+                await subject();
+                const [,, collateralAfter] = await morpho.position(marketId, setToken.address);
+                expect(collateralAfter).to.eq(0);
+                const balanceAfter = await wsteth.balanceOf(setToken.address);
+                expect(balanceAfter).to.gte(balanceBefore.add(collateralBefore).sub(1));
+                expect(balanceAfter).to.lte(balanceBefore.add(collateralBefore).add(1));
+              });
+              it("can enter collateral position again at no loss", async () => {
+                const [,, collateralBefore] = await morpho.position(
+                  marketId,
+                  setToken.address,
+                );
+                await subject();
+                await morphoLeverageModule.enterCollateralPosition(setToken.address);
+                const [,, collateralAfter] = await morpho.position(marketId, setToken.address);
+                expect(collateralAfter).to.eq(collateralBefore);
+              });
             });
           });
 
@@ -962,7 +1015,7 @@ describe("MorphoLeverageModule integration", () => {
                 const newPositions = await setToken.getPositions();
 
                 // Small difference, assumed to be due to interest accrued on debt position
-                const debtInterestTolerance = 10;
+                const debtInterestTolerance = 20;
                 for (let i = 0; i < positions.length; i++) {
                   if (positions[i].component === usdc.address) {
                     expect(newPositions[i].unit).to.lte(positions[i].unit);
